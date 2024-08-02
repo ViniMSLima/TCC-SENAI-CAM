@@ -4,6 +4,7 @@ import time
 import socketio
 import numpy as np
 import os
+import requests
 
 # Conecta ao servidor Flask via WebSocket
 sio = socketio.Client()
@@ -82,7 +83,7 @@ def resize_and_process_image(image_path, output_dir, counter, size=(128, 72)):
         'red2': (np.array([160, 100, 100]), np.array([180, 255, 255])),
         'light_blue': (np.array([85, 100, 100]), np.array([110, 255, 255])),  # Adjusted for light blue
         'white': (np.array([0, 0, 200]), np.array([180, 30, 255]))
-        }
+    }
 
     # Create masks for each color
     masks = {}
@@ -109,6 +110,14 @@ def resize_and_process_image(image_path, output_dir, counter, size=(128, 72)):
     
     output_path = os.path.join(output_dir, '{}.png'.format(counter))
     cv2.imwrite(output_path, resized_image, [cv2.IMWRITE_PNG_COMPRESSION, 9])
+    print("Enviando imagem para análise da IA")  # Adicionado aqui
+    
+    # Envia a imagem para análise da IA
+    url = 'http://localhost:5000/json/process'
+    files = {'images': [output_path]}
+    response = requests.post(url, json=files)
+    print(response.json())  # Exibe a resposta do servidor
+    
     return output_path
 
 def main():
@@ -142,7 +151,6 @@ def main():
 
             # Envia o frame para o servidor
             sio.emit('video_frame', frame_base64)
-            print("Frame enviado para o servidor.")
 
             key = cv2.waitKey(1) & 0xFF
             if key == ord(' '):
