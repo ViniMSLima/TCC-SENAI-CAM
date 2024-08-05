@@ -116,7 +116,7 @@ def resize_and_process_image(image_path, output_dir, counter, size=(128, 72)):
     url = 'http://localhost:5000/json/process'
     files = {'images': [output_path]}
     response = requests.post(url, json=files)
-    print(response.json())  # Exibe a resposta do servidor
+    # print(response.json())  # Exibe a resposta do servidor
     
     return output_path
 
