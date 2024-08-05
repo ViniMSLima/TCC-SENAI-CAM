@@ -5,6 +5,14 @@ import numpy as np
 import cv2
 from . import socketio
 import tensorflow as tf
+import serial
+import time
+
+ser = serial.Serial('dev/cu.usbserial-14330', 9600)
+time.sleep(2)
+
+def send_command(command):
+    ser.write(command.encode())
 
 # Carrega o modelo pré-treinado
 model = tf.keras.models.load_model("flaskr/model5.keras")
@@ -34,13 +42,13 @@ def process_images():
     
     # Envia o comando ao Arduino
     if "good_blue" in results:
-        print('A')  # Comando para "good_blue"
+        send_command('A')  # Comando para "good_blue"
     elif "bad_blue" in results:
-        print('B')  # Comando para "bad_blue"
+        send_command('B')  # Comando para "bad_blue"
     elif "good_red" in results:
-        print('C')  # Comando para "good_red"
+        send_command('C')  # Comando para "good_red"
     elif "bad_red" in results:
-        print('D')  # Comando para "bad_red"
+        send_command('D')  # Comando para "bad_red"
     
     return jsonify(results)
 
