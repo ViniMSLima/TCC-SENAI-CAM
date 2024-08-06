@@ -1,7 +1,31 @@
 import cv2
+import base64
+import time
+import socketio
 import numpy as np
 import os
-import time
+import requests
+
+# Conecta ao servidor Flask via WebSocket
+sio = socketio.Client()
+
+@sio.event
+def connect():
+    print('Conectado ao servidor Flask.')
+
+@sio.event
+def disconnect():
+    print('Desconectado do servidor Flask.')
+
+@sio.event
+def connect_error(data):
+    print(f'Falha na conexão: {data}')
+
+try:
+    sio.connect('http://localhost:5000')
+except Exception as e:
+    print(f'Erro ao conectar ao servidor: {e}')
+    exit()
 
 def save_image(frame, save_dir, counter):
     image_path = os.path.join(save_dir, '{}.png'.format(counter))
@@ -59,7 +83,7 @@ def resize_and_process_image(image_path, output_dir, counter, size=(128, 72)):
         'red2': (np.array([160, 100, 100]), np.array([180, 255, 255])),
         'light_blue': (np.array([85, 100, 100]), np.array([110, 255, 255])),  # Adjusted for light blue
         'white': (np.array([0, 0, 200]), np.array([180, 30, 255]))
-        }
+    }
 
     # Create masks for each color
     masks = {}
@@ -86,6 +110,14 @@ def resize_and_process_image(image_path, output_dir, counter, size=(128, 72)):
     
     output_path = os.path.join(output_dir, '{}.png'.format(counter))
     cv2.imwrite(output_path, resized_image, [cv2.IMWRITE_PNG_COMPRESSION, 9])
+    print("Enviando imagem para análise da IA")
+    
+    # Envia a imagem para análise da IA
+    url = 'http://localhost:5000/json/process'
+    files = {'images': [output_path]}
+    response = requests.post(url, json=files)
+    # print(response.json())  # Exibe a resposta do servidor
+    
     return output_path
 
 def main():
@@ -95,6 +127,8 @@ def main():
         print("Erro: Não foi possível abrir a câmera.")
         return
 
+    print("Câmera conectada com sucesso.")
+    
     save_dir = 'testing_dataset'
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
@@ -102,6 +136,10 @@ def main():
     counter = 0
     flash_frames = 0
     flash_color = (255, 255, 255)
+    last_capture_time = time.time()
+    capture_delay = 2  # Delay entre capturas automáticas
+    color_detected = False  # Estado de detecção de cor
+    countdown_start_time = None  # Hora de início da contagem regressiva
 
     try:
         while True:
@@ -111,6 +149,73 @@ def main():
                 print("Erro: Não foi possível capturar o frame.")
                 break
 
+            # Codifica o frame como JPEG
+            _, buffer = cv2.imencode('.jpg', frame)
+            frame_base64 = base64.b64encode(buffer).decode('utf-8')
+
+            # Envia o frame para o servidor
+            sio.emit('video_frame', frame_base64)
+
+            # Processa a detecção de cores em um frame separado
+            frame_copy = frame.copy()
+            img_hsv = cv2.cvtColor(frame_copy, cv2.COLOR_BGR2HSV)
+            color_ranges = {
+                'red1': (np.array([0, 100, 100]), np.array([10, 255, 255])),
+                'red2': (np.array([160, 100, 100]), np.array([180, 255, 255])),
+                'light_blue': (np.array([85, 100, 100]), np.array([110, 255, 255])),
+                'white': (np.array([0, 0, 200]), np.array([180, 30, 255]))
+            }
+
+            # Create masks for each color
+            masks = {}
+            for key in color_ranges:
+                lower_bound, upper_bound = color_ranges[key]
+                masks[key] = create_color_mask(img_hsv, lower_bound, upper_bound)
+
+            # Combine red masks
+            masks['red'] = masks['red1'] + masks['red2']
+            del masks['red1']
+            del masks['red2']
+
+            # Filter the image with each mask
+            filtered_images = filter_color(frame_copy, masks)
+
+            # Determine which color has the most presence
+            dominant_color = max(filtered_images.keys(), key=lambda color: np.sum(masks[color]))
+
+            # Verifica se há uma quantidade significativa de cor na imagem
+            if np.sum(masks[dominant_color]) > 10000:
+                if not color_detected:
+                    color_detected = True
+                    countdown_start_time = time.time()
+                    print(f"Cor detectada: {dominant_color}, iniciando contagem regressiva")
+
+            if color_detected and (time.time() - countdown_start_time) >= 2:
+                print(f"Tirando foto, cor dominante: {dominant_color}")
+                image_path = save_image(frame_copy, save_dir, counter)
+                resize_and_process_image(image_path, save_dir, counter, size=(128, 72))
+                counter += 1
+                flash_frames = 5
+                flash_color = (0, 255, 0)
+                color_detected = False
+
+            if color_detected:
+                remaining_time = 2 - int(time.time() - countdown_start_time)
+                countdown_frame = frame.copy()
+                cv2.putText(countdown_frame, f'Tirando foto em {remaining_time}s', (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1,
+                            (0, 255, 0), 2, cv2.LINE_AA)
+                cv2.imshow('CAM', countdown_frame)
+            else:
+                if flash_frames > 0:
+                    overlay = frame.copy()
+                    cv2.rectangle(overlay, (0, 0), (frame.shape[1], frame.shape[0]), flash_color, -1)
+                    alpha = 0.5
+                    frame = cv2.addWeighted(overlay, alpha, frame, 
+                                                                                    1 - alpha, 0)
+                    flash_frames -= 1
+
+                cv2.imshow('CAM', frame)
+
             key = cv2.waitKey(1) & 0xFF
             if key == ord(' '):
                 image_path = save_image(frame, save_dir, counter)
@@ -119,22 +224,17 @@ def main():
                 flash_frames = 5
                 flash_color = (0, 255, 0)
 
-            if flash_frames > 0:
-                overlay = frame.copy()
-                cv2.rectangle(overlay, (0, 0), (frame.shape[1], frame.shape[0]), flash_color, -1)
-                alpha = 0.5
-                frame = cv2.addWeighted(overlay, alpha, frame, 1 - alpha, 0)
-                flash_frames -= 1
-
-            cv2.imshow('CAM', frame)
-
             if key == ord('q'):
                 break
+
     except KeyboardInterrupt:
         print("Interrompido pelo usuário")
 
-    cap.release()
-    cv2.destroyAllWindows()
+    finally:
+        cap.release()
+        cv2.destroyAllWindows()
+        sio.disconnect()
 
 if __name__ == "__main__":
     main()
+

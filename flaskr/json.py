@@ -8,7 +8,7 @@ import tensorflow as tf
 import serial
 import time
 
-ser = serial.Serial('dev/cu.usbserial-14330', 9600)
+ser = serial.Serial('/dev/cu.usbserial-14330', 9600)
 time.sleep(2)
 
 def send_command(command):
