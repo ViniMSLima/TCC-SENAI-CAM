@@ -1,8 +1,0 @@
-flask
-flask_socketio
-flask_cors
-opencv-python
-tensorflow
-socketio-client
-numpy
-serial

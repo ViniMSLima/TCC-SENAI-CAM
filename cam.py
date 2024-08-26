@@ -96,19 +96,19 @@ def execute_another_script(script_path):
         exec(script_content, globals())
 
 def send_image_to_server(image_path):
-    url = 'http://127.0.0.1:5000/json/'  # Update with your server's address
-    data = {
-        'images': [image_path]
-    }
-    headers = {'Content-Type': 'application/json'}
-    response = requests.post(url, json=data, headers=headers)
+    url = 'http://127.0.0.1:5000/json/'  # Atualize com o endereço do seu servidor
+    with open(image_path, 'rb') as image_file:
+        files = {'image': image_file}
+        response = requests.post(url, files=files)
+    
     if response.status_code == 200:
         print(f"Server response: {response.json()}")
     else:
         print(f"Failed to get response from server. Status code: {response.status_code}")
 
+
 def main():
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
 
     if not cap.isOpened():
         print("Erro: Não foi possível abrir a câmera.")
