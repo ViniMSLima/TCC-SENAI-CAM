@@ -108,7 +108,7 @@ def send_image_to_server(image_path):
 
 
 def main():
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
         print("Erro: Não foi possível abrir a câmera.")
