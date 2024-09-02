@@ -21,7 +21,7 @@ def send_frames():
         # Converte para base64 e envia
         frame_b64 = base64.b64encode(buffer).decode('utf-8')
         sio.emit('video_frame', frame_b64)
-        time.sleep(0.1)  # Pequeno delay para reduzir a taxa de frames
+        time.sleep(0.02)  # Pequeno delay para reduzir a taxa de frames
 
 @sio.event
 def connect():
