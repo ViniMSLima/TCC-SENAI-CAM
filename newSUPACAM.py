@@ -78,15 +78,9 @@ def process_frames(queue):
             # Chame a função de processamento de imagem
             processed_image_path = resize_and_process_image(image_path, save_dir, counter)
             
-            if processed_image_path is not None:
-                current_time = time.time()
-                if piece_detected and (current_time - last_detection_time < DETECTION_DELAY):
-                    print("Peça ainda detectada. Ignorando nova leitura.")
-                else:
-                    send_image_to_server(processed_image_path)
-                    piece_detected = True
-                    last_detection_time = current_time
-                    counter += 1
+            if processed_image_path is not None: 
+                send_image_to_server(processed_image_path)
+                counter += 1
             else:
                 print("Erro ao processar a imagem. O caminho da imagem processada é None.")
         
