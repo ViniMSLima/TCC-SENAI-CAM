@@ -4,22 +4,42 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Stream</title>
+    <title>Câmera 1</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
 </head>
 <body>
-    <h1>Transmissão ao Vivo da Webcam</h1>
-    <img id="video-stream" src="">
+    <h1>Feed de Vídeo das Câmeras</h1>
+    <h2>Câmera 0</h2>
+    <img id="videoElement0" src="" alt="Feed de vídeo da Câmera 0">
+    <h2>Câmera 1</h2>
+    <img id="videoElement1" src="" alt="Feed de vídeo da Câmera 1">
 
-    <script src="https://cdn.socket.io/4.5.0/socket.io.min.js"></script>
     <script>
-        const socket = io.connect('http://127.0.0.1:5001');
-
-        socket.on('connect', () => {
-            console.log('Conectado ao servidor!');
+        var socket = io('http://127.0.0.1:5001', {
+            reconnection: true,              // Ativar reconexão automática
+            reconnectionAttempts: Infinity,  // Tentativas ilimitadas de reconexão
+            reconnectionDelay: 1000,         // Atraso inicial de 1 segundo entre tentativas de reconexão
+            reconnectionDelayMax: 5000,      // Atraso máximo de 5 segundos entre tentativas de reconexão
+            timeout: 20000                   // Tempo máximo de conexão em 20 segundos
         });
 
-        socket.on('new_frame', (data) => {
-            document.getElementById('video-stream').src = 'data:image/jpeg;base64,' + data;
+        socket.on('connect', function() {
+            console.log('Conectado ao servidor SocketIO');
+        });
+
+        socket.on('disconnect', function(reason) {
+            console.log('Desconectado do servidor SocketIO:', reason);
+            // Não é necessário recarregar a página ao desconectar
+        });
+
+        socket.on('new_frame_camera_0', function(data) {
+            var imgElement0 = document.getElementById('videoElement0');
+            imgElement0.src = 'data:image/jpeg;base64,' + data.frame;
+        });
+
+        socket.on('new_frame_camera_1', function(data) {
+            var imgElement1 = document.getElementById('videoElement1');
+            imgElement1.src = 'data:image/jpeg;base64,' + data.frame;
         });
     </script>
 </body>

@@ -5,7 +5,6 @@ import threading
 import numpy as np
 import os
 import requests
-import json
 from socketio import Client
 from queue import Queue
 
@@ -33,7 +32,7 @@ def capture_frames(queue):
             print("Erro: Não foi possível capturar o frame.")
             break
         queue.put(frame)
-        time.sleep(0.05)  # Pequeno delay para reduzir a taxa de frames
+        time.sleep(0.01)  # Pequeno delay para reduzir a taxa de frames
 
     cap.release()
 
@@ -46,8 +45,8 @@ def send_frames(queue):
             _, buffer = cv2.imencode('.jpg', frame)
             # Converte para base64 e envia
             frame_b64 = base64.b64encode(buffer).decode('utf-8')
-            sio.emit('video_frame', frame_b64)
-        time.sleep(0.1)  # Pequeno delay para sincronização
+            sio.emit('video_frame', {'camera_id': 'camera_1', 'frame': frame_b64})
+        time.sleep(0.01)  # Pequeno delay para sincronização
 
 def send_image_to_server(image_path):
     """Função para enviar a imagem processada para análise da IA."""
@@ -95,42 +94,7 @@ def process_frames(queue):
         if piece_detected and (time.time() - last_detection_time >= DETECTION_DELAY):
             piece_detected = False
         
-        time.sleep(1)
-
-def create_color_mask(img_hsv, lower_bound, upper_bound):
-    mask = cv2.inRange(img_hsv, lower_bound, upper_bound)
-    kernel = np.ones((5, 5), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-    return mask
-
-def filter_color(img, color_masks):
-    filtered_images = {}
-    for color, mask in color_masks.items():
-        filtered_image = cv2.bitwise_and(img, img, mask=mask)
-        filtered_images[color] = filtered_image
-    return filtered_images
-
-def resize_and_maintain_aspect_ratio(image, size=(128, 72)):
-    h, w = image.shape[:2]
-    aspect_ratio = w / h
-
-    if aspect_ratio > 16 / 9:
-        new_w = size[1] * 16 // 9
-        new_h = size[1]
-    else:
-        new_w = size[0]
-        new_h = size[0] * 9 // 16
-
-    resized_image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
-    delta_w = size[0] - new_w
-    delta_h = size[1] - new_h
-    top, bottom = delta_h // 2, delta_h - (delta_h // 2)
-    left, right = delta_w // 2, delta_w - (delta_w // 2)
-    
-    color = [0, 0, 0]
-    new_image = cv2.copyMakeBorder(resized_image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
-    return new_image
+        time.sleep(0.1)
 
 def resize_and_process_image(image_path, output_dir, counter, size=(128, 72)):
     img = cv2.imread(image_path, cv2.IMREAD_COLOR)
@@ -182,24 +146,54 @@ def resize_and_process_image(image_path, output_dir, counter, size=(128, 72)):
 
     return output_path
 
-# SocketIO Event Handlers
-@sio.event
-def connect():
-    print("Conectado ao servidor")
+def create_color_mask(img_hsv, lower_bound, upper_bound):
+    mask = cv2.inRange(img_hsv, lower_bound, upper_bound)
+    kernel = np.ones((5, 5), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    return mask
 
-@sio.event
-def disconnect():
-    print("Desconectado do servidor")
+def filter_color(img, color_masks):
+    filtered_images = {}
+    for color, mask in color_masks.items():
+        filtered_image = cv2.bitwise_and(img, img, mask=mask)
+        filtered_images[color] = filtered_image
+    return filtered_images
 
-if __name__ == '__main__':
-    # Inicia as threads para captura, envio e processamento de frames
-    capture_thread = threading.Thread(target=capture_frames, args=(frame_queue,))
-    send_thread = threading.Thread(target=send_frames, args=(frame_queue,))
-    process_thread = threading.Thread(target=process_frames, args=(frame_queue,))
+def resize_and_maintain_aspect_ratio(image, size=(128, 72)):
+    h, w = image.shape[:2]
+    aspect_ratio = w / h
 
-    capture_thread.start()
-    send_thread.start()
-    process_thread.start()
+    if aspect_ratio > 16 / 9:
+        new_w = size[1] * 16 // 9
+        new_h = size[1]
+    else:
+        new_w = size[0]
+        new_h = size[0] * 9 // 16
 
-    sio.connect(SERVER_URL)
-    sio.wait()
+    resized_image = cv2.resize(image, (new_w, new_h), interpolation=cv2.INTER_AREA)
+    delta_w = size[0] - new_w
+    delta_h = size[1] - new_h
+    top, bottom = delta_h // 2, delta_h - (delta_h // 2)
+    left, right = delta_w // 2, delta_w - (delta_w // 2)
+
+    color = [0, 0, 0]
+    new_image = cv2.copyMakeBorder(resized_image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color)
+    return new_image
+
+# Conectar ao servidor SocketIO
+sio.connect(SERVER_URL)
+
+# Criar e iniciar threads
+capture_thread = threading.Thread(target=capture_frames, args=(frame_queue,))
+send_thread = threading.Thread(target=send_frames, args=(frame_queue,))
+process_thread = threading.Thread(target=process_frames, args=(frame_queue,))
+
+capture_thread.start()
+send_thread.start()
+process_thread.start()
+
+# Aguarde o término das threads
+capture_thread.join()
+send_thread.join()
+process_thread.join()

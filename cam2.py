@@ -14,7 +14,7 @@ sio = Client()
 frame_queue = Queue()
 
 def capture_frames(queue):
-    cap = cv2.VideoCapture(0)  # Abre a câmera 0
+    cap = cv2.VideoCapture(1)  # Abre a câmera 0
 
     if not cap.isOpened():
         print("Erro: Não foi possível abrir a câmera.")

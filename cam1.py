@@ -2,7 +2,6 @@ import cv2
 import base64
 import time
 import threading
-import numpy as np
 from socketio import Client
 from queue import Queue
 
@@ -14,7 +13,7 @@ sio = Client()
 frame_queue = Queue()
 
 def capture_frames(queue):
-    cap = cv2.VideoCapture(1)  # Abre a câmera 1
+    cap = cv2.VideoCapture(0)  # Abre a câmera 0 (use 1 para a segunda câmera)
 
     if not cap.isOpened():
         print("Erro: Não foi possível abrir a câmera.")
@@ -26,7 +25,7 @@ def capture_frames(queue):
             print("Erro: Não foi possível capturar o frame.")
             break
         queue.put(frame)
-        time.sleep(0.1)
+        time.sleep(0.05)  # Ajuste o tempo para diminuir o processamento
 
     cap.release()
 
@@ -36,8 +35,8 @@ def send_frames(queue):
             frame = queue.get()
             _, buffer = cv2.imencode('.jpg', frame)
             frame_b64 = base64.b64encode(buffer).decode('utf-8')
-            sio.emit('video_frame', {'camera_id': 'camera_1', 'frame': frame_b64})
-        time.sleep(0.01)
+            sio.emit('video_frame', {'camera_id': 'camera_0', 'frame': frame_b64})  # Ajuste para 'camera_1' para a segunda câmera
+        time.sleep(0.05)  # Ajuste o tempo para diminuir o processamento
 
 @sio.event
 def connect():
