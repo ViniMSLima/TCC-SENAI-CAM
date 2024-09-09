@@ -20,7 +20,7 @@ DETECTION_DELAY = 5  # Tempo em segundos para considerar uma peça como nova
 
 def capture_frames(queue):
     """Função para capturar frames da câmera e colocá-los em uma fila."""
-    cap = cv2.VideoCapture(0)  # Abre a webcam
+    cap = cv2.VideoCapture(1)  # Abre a webcam
 
     if not cap.isOpened():
         print("Erro: Não foi possível abrir a câmera.")
