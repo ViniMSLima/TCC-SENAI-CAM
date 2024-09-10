@@ -6,11 +6,27 @@ import requests
 import serial
 
 # Set up serial communication with Arduino
-ser = serial.Serial('/dev/cu.usbserial-14330', 9600)
-time.sleep(2)  # Wait for the serial connection to initialize
+# ser = serial.Serial('/dev/cu.usbserial-14330', 9600)
+# time.sleep(2)  # Wait for the serial connection to initialize
 
 def send_command(command):
-    ser.write(command.encode())
+    print(command)
+    # ser.write(command.encode())
+
+def send_request_red():
+    url1 = 'https://tcc-senai-back-alpha.vercel.app/machine/incredcount/66daf7e5ffc0cf4e559bd397'    
+    print("red")
+    requests.post(url1)
+    
+def send_request_blue():
+    url1 = 'https://tcc-senai-back-alpha.vercel.app/machine/incbluecount/66daf7e5ffc0cf4e559bd397'    
+    print("blue")
+    requests.post(url1)
+    
+def send_request_rejected():
+    url1 = 'https://tcc-senai-back-alpha.vercel.app/machine/increjectedcount/66daf7e5ffc0cf4e559bd397'    
+    print("merda")
+    requests.post(url1)
 
 def save_image(frame, save_dir, counter):
     image_path = os.path.join(save_dir, '0.png')
@@ -144,12 +160,16 @@ def main():
                 if server_response:
                     # Map server response to Arduino commands
                     if "good_blue" in server_response:
+                        send_request_blue()
                         send_command('A')  # Command for "good_blue"
                     elif "bad_blue" in server_response:
+                        send_request_rejected()
                         send_command('B')  # Command for "bad_blue"
                     elif "good_red" in server_response:
+                        send_request_red()
                         send_command('C')  # Command for "good_red"
                     elif "bad_red" in server_response:
+                        send_request_rejected()
                         send_command('D')  # Command for "bad_red"
                 counter += 1
                 flash_frames = 5
@@ -190,12 +210,16 @@ def main():
                     if server_response:
                         # Map server response to Arduino commands
                         if "good_blue" in server_response:
+                            send_request_blue()
                             send_command('A')  # Command for "good_blue"
                         elif "bad_blue" in server_response:
+                            send_request_rejected()
                             send_command('B')  # Command for "bad_blue"
                         elif "good_red" in server_response:
+                            send_request_red()
                             send_command('C') 
                         elif "bad_red" in server_response:
+                            send_request_rejected()
                             send_command('D')  # Command for "bad_red"
                     counter += 1
                     flash_frames = 5
@@ -219,7 +243,7 @@ def main():
     finally:
         cap.release()
         cv2.destroyAllWindows()
-        ser.close()  # Close the serial port
+        # ser.close()  # Close the serial port
 
 if __name__ == "__main__":
     main()
