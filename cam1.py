@@ -13,7 +13,7 @@ sio = Client()
 frame_queue = Queue()
 
 def capture_frames(queue):
-    cap = cv2.VideoCapture(0)  # Abre a câmera 0 (use 1 para a segunda câmera)
+    cap = cv2.VideoCapture(0)  # Abre a câmera 0 
 
     if not cap.isOpened():
         print("Erro: Não foi possível abrir a câmera.")
@@ -35,7 +35,7 @@ def send_frames(queue):
             frame = queue.get()
             _, buffer = cv2.imencode('.jpg', frame)
             frame_b64 = base64.b64encode(buffer).decode('utf-8')
-            sio.emit('video_frame', {'camera_id': 'camera_0', 'frame': frame_b64})  # Ajuste para 'camera_1' para a segunda câmera
+            sio.emit('video_frame', {'camera_id': 'camera', 'frame': frame_b64})
         time.sleep(0.05)  # Ajuste o tempo para diminuir o processamento
 
 @sio.event

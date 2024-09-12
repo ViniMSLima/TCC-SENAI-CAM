@@ -11,8 +11,6 @@
     <h1>Feed de Vídeo das Câmeras</h1>
     <h2>Câmera 0</h2>
     <img id="videoElement0" src="" alt="Feed de vídeo da Câmera 0">
-    <h2>Câmera 1</h2>
-    <img id="videoElement1" src="" alt="Feed de vídeo da Câmera 1">
 
     <script>
         var socket = io('http://127.0.0.1:5001', {
@@ -35,11 +33,6 @@
         socket.on('new_frame_camera_0', function(data) {
             var imgElement0 = document.getElementById('videoElement0');
             imgElement0.src = 'data:image/jpeg;base64,' + data.frame;
-        });
-
-        socket.on('new_frame_camera_1', function(data) {
-            var imgElement1 = document.getElementById('videoElement1');
-            imgElement1.src = 'data:image/jpeg;base64,' + data.frame;
         });
     </script>
 </body>
